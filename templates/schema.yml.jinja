@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: {{ plan.model_name }}
+    description: "{{ plan.description }}"
+    columns:
+      {% for dim in plan.dimensions %}
+      - name: {{ dim.name }}
+        description: "{{ dim.description }}"
+        data_type: {{ dim.data_type }}
+        {% if dim.name in plan.tests.unique_columns %}
+        tests:
+          - unique
+        {% endif %}
+        {% if dim.name in plan.tests.not_null_columns %}
+        tests:
+          - not_null
+        {% endif %}
+      {% endfor %}
+      {% for measure in plan.measures %}
+      - name: {{ measure.name }}
+        description: "{{ measure.description }}"
+        data_type: {{ measure.data_type }}
+      {% endfor %}
+    {% if plan.tests.accepted_values %}
+    tests:
+      {% for av in plan.tests.accepted_values %}
+      - accepted_values:
+          column_name: {{ av.column }}
+          values: [{% for v in av.values %}'{{ v }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+      {% endfor %}
+    {% endif %}

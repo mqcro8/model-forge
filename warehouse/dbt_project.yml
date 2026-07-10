@@ -1,0 +1,20 @@
+name: model_forge_warehouse
+profile: model_forge_warehouse
+version: "1.0.0"
+config-version: 2
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+
+clean-targets:
+  - target
+  - dbt_packages
+
+seeds:
+  +quote_columns: false
+  +column_types:
+    customer_id: integer
+    order_id: integer
+    order_item_id: integer

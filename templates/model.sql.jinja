@@ -1,0 +1,42 @@
+with
+{% for ref in plan.source_refs %}
+{{ ref.alias }} as (
+    select
+        {% for dim in plan.dimensions if dim.source_table == ref.table_name %}
+        {{ dim.source_column }} as {{ dim.name }},
+        {% endfor %}
+        {% for measure in plan.measures if measure.source_table == ref.table_name %}
+        {{ measure.source_column }} as {{ measure.name }}{% if not loop.last or loop.index < plan.measures|length %},{% endif %}
+        {% endfor %}
+    from {{ "{{ ref('" ~ ref.table_name ~ "') }}" }}
+    {% for filter in plan.filters if filter.source_table == ref.table_name %}
+    {% if filter.operator == "is_null" %}
+    where {{ filter.source_column }} is null
+    {% elif filter.operator == "not_null" %}
+    where {{ filter.source_column }} is not null
+    {% elif filter.operator == "in" %}
+    where {{ filter.source_column }} in ({{ filter.value }})
+    {% else %}
+    where {{ filter.source_column }} {{ filter.operator }} {{ filter.value }}
+    {% endif %}
+    {% endfor %}
+)
+{% endfor %}
+select
+    {% for dim in plan.dimensions %}
+    {{ dim.source_table }}.{{ dim.name }} as {{ dim.name }},
+    {% endfor %}
+    {% for measure in plan.measures %}
+    {{ measure.aggregation }}({{ measure.source_table }}.{{ measure.name }}) as {{ measure.name }}{% if not loop.last %},{% endif %}
+    {% endfor %}
+from {% for ref in plan.source_refs %}{{ ref.alias }}{% if not loop.last %}, {% endif %}{% endfor %}
+{% for join in plan.join_graph %}
+{{ join.join_type }} join {{ join.right_table }} on {{ join.left_table }}.{{ join.left_column }} = {{ join.right_table }}.{{ join.right_column }}
+{% endfor %}
+{% for group_by in plan.dimensions %}
+{% if loop.first %}
+group by {{ group_by.name }}
+{% else %}
+    , {{ group_by.name }}
+{% endif %}
+{% endfor %}

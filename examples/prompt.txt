@@ -1,0 +1,1 @@
+Build a customer LTV mart showing total spend per customer over the last 12 months, including customer name, country, total orders, total revenue, average order value, and days since last order.

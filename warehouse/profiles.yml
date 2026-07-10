@@ -1,0 +1,7 @@
+model_forge_warehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: model_forge.duckdb
+      threads: 4

@@ -1,0 +1,16 @@
+unit_test:
+  name: {{ plan.model_name }}_unit_test
+  model: {{ plan.model_name }}
+  given:
+    {% for table_name, rows in plan.unit_test.input_rows.items() %}
+    - input: {{ "{{ ref('" ~ table_name ~ "') }}" }}
+      rows:
+        {% for row in rows %}
+        - {% for col, val in row.items() %}{{ col }}: {{ val }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% endfor %}
+    {% endfor %}
+  expected:
+    rows:
+      {% for row in plan.unit_test.expected_output_rows %}
+      - {% for col, val in row.items() %}{{ col }}: {{ val }}{% if not loop.last %}, {% endif %}{% endfor %}
+      {% endfor %}
