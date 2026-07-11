@@ -1,0 +1,13 @@
+source:
+  type: dbt
+  config:
+    manifest_path: warehouse/target/manifest.json
+    catalog_path: warehouse/target/catalog.json
+    target_platform: duckdb
+
+sink:
+  type: datahub-rest
+  config:
+    server: http://localhost:8080
+
+pipeline_name: model-forge-dbt-ingestion

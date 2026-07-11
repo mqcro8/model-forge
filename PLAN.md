@@ -178,16 +178,16 @@ while building the generator itself.
 
 ## 6. Timeline
 
-Today: July 9, 2026. Submissions close August 10, 2026, 5:00pm ET — about
-4.5 weeks.
+Today: July 10, 2026. Submissions close August 10, 2026, 5:00pm ET — about
+4 weeks.
 
-| Week | Dates | Milestone |
-|---|---|---|
-| 1 | Jul 9–15 | DataHub up, seed warehouse ingested, MCP server talking to it. Confirm `search` / `list_schema_fields` / `get_lineage` all return real data. |
-| 2 | Jul 16–22 | Build the generator loop + templates. Milestone: one prompt → one `dbt build`-passing model, end to end. |
-| 3 | Jul 23–29 | Write-back, PR automation, CI workflow, `examples/` folder, harden fail-fast paths. |
-| 4 | Jul 30–Aug 5 | README, demo video (≤3 min, must show it actually running), optional OSS bonus contribution, clean-clone test run. |
-| — | Aug 6–10 | Buffer, submit. |
+| Week | Dates | Milestone | Status |
+|---|---|---|---|
+| 1 | Jul 9–15 | DataHub up, seed warehouse ingested, MCP server talking to it. Confirm `search` / `list_schema_fields` / `get_lineage` all return real data. | ✅ DONE |
+| 2 | Jul 16–22 | Build the generator loop + templates. Milestone: one prompt → one `dbt build`-passing model, end to end. | ✅ DONE |
+| 3 | Jul 23–29 | Write-back, PR automation, CI workflow, `examples/` folder, harden fail-fast paths. | 🔄 IN PROGRESS (3.1, 3.2 done; 3.3, 3.4, 3.5 pending) |
+| 4 | Jul 30–Aug 5 | README, demo video (≤3 min, must show it actually running), optional OSS bonus contribution, clean-clone test run. | ⬜ PENDING |
+| — | Aug 6–10 | Buffer, submit. | ⬜ PENDING |
 
 ---
 

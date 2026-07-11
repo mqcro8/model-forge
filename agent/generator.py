@@ -7,11 +7,22 @@ from typing import Any
 from anthropic import Anthropic
 
 from .mcp_client import MCPClient
-from .prompts import BUILD_PLAN_SCHEMA, SYSTEM_PROMPT, make_user_prompt
+from .prompts import BUILD_PLAN_SCHEMA, MCP_TOOL_DEFINITIONS, SYSTEM_PROMPT, make_user_prompt
 
 
 class GenerationError(Exception):
     """Raised when generation fails (DataHub unreachable, table not found, etc.)."""
+
+
+def _call_mcp_tool(mcp_client: MCPClient, tool_name: str, arguments: dict[str, Any]) -> str:
+    """Call an MCP tool and return the text result.
+
+    Maps the tool name from the LLM to the actual MCP tool name.
+    """
+    try:
+        return mcp_client.run_tool(tool_name, arguments)
+    except Exception as exc:
+        return f"Error calling {tool_name}: {exc}"
 
 
 def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
@@ -32,68 +43,62 @@ def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
 
     client = Anthropic(api_key=api_key)
 
-    # Define MCP tools as Anthropic tool definitions
-    tools = [
-        {
-            "name": "search_datasets",
-            "description": "Search DataHub for datasets matching a query.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query string"}
-                },
-                "required": ["query"],
-            },
-        },
-        {
-            "name": "get_dataset_schema",
-            "description": "Get the schema fields for a dataset.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "urn": {"type": "string", "description": "Dataset URN"}
-                },
-                "required": ["urn"],
-            },
-        },
-        {
-            "name": "get_lineage",
-            "description": "Get downstream lineage for a dataset.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "urn": {"type": "string", "description": "Dataset URN"},
-                    "direction": {
-                        "type": "string",
-                        "enum": ["upstream", "downstream"],
-                        "description": "Lineage direction",
-                    },
-                },
-                "required": ["urn", "direction"],
-            },
-        },
-    ]
-
-    messages = [
+    messages: list[dict[str, Any]] = [
         {"role": "user", "content": make_user_prompt(ask)},
     ]
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4096,
-        system=SYSTEM_PROMPT + "\n\nBuildPlan schema:\n" + BUILD_PLAN_SCHEMA,
-        messages=messages,
-        tools=tools,
-        tool_choice={"type": "auto"},
-    )
+    system = SYSTEM_PROMPT + "\n\nBuildPlan JSON schema:\n" + BUILD_PLAN_SCHEMA
 
-    # The assistant should return tool calls and eventually a text response
-    # with the JSON plan as the final turn
-    for content_block in response.content:
-        if content_block.type == "text":
+    max_iterations = 15
+    for _ in range(max_iterations):
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            system=system,
+            messages=messages,
+            tools=MCP_TOOL_DEFINITIONS,
+        )
+
+        # Collect tool_use blocks and any text blocks
+        tool_calls = []
+        text_parts = []
+
+        for block in response.content:
+            if block.type == "tool_use":
+                tool_calls.append(block)
+            elif block.type == "text":
+                text_parts.append(block.text)
+
+        # If no tool calls, we're done — parse the text as the JSON plan
+        if not tool_calls:
+            combined_text = "\n".join(text_parts).strip()
+            # Strip markdown fences if present
+            if combined_text.startswith("```"):
+                lines = combined_text.split("\n")
+                lines = lines[1:]  # Remove opening fence
+                if lines and lines[-1].strip() == "```":
+                    lines = lines[:-1]
+                combined_text = "\n".join(lines)
             try:
-                return json.loads(content_block.text)
+                return json.loads(combined_text)
             except json.JSONDecodeError as exc:
-                raise GenerationError(f"Failed to parse LLM output as JSON: {exc}") from exc
+                raise GenerationError(f"Failed to parse LLM output as JSON: {exc}\nOutput was:\n{combined_text}") from exc
 
-    raise GenerationError("LLM did not return a text response")
+        # Append assistant message (with tool_use blocks)
+        messages.append({"role": "assistant", "content": response.content})
+
+        # Execute each tool call and build tool_result blocks
+        tool_results = []
+        for block in tool_calls:
+            result_text = _call_mcp_tool(mcp_client, block.name, block.input)
+            tool_results.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": result_text,
+                }
+            )
+
+        messages.append({"role": "user", "content": tool_results})
+
+    raise GenerationError(f"Generation loop exceeded {max_iterations} iterations without producing a plan")

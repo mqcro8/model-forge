@@ -1,0 +1,15 @@
+unit_tests:
+  - name: test_customer_ltv_mart
+    model: customer_ltv_mart
+    description: "Unit test for customer_ltv_mart"
+    given:
+      - input: ref('stg_customers')
+        rows:
+          - { customer_id: 1, first_name: 'Alice', last_name: 'Smith', email: 'alice@example.com', country: 'US' }
+      - input: ref('stg_orders')
+        rows:
+          - { order_id: 1001, customer_id: 1, order_status: 'completed', total_amount: 150.0 }
+          - { order_id: 1002, customer_id: 1, order_status: 'completed', total_amount: 200.0 }
+    expect:
+      rows:
+        - { customer_id: 1, customer_name: 'Alice', country: 'US', total_spend: 350.0, order_count: 2 }

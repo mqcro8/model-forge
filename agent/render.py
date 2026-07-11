@@ -1,6 +1,5 @@
-"""Deterministic rendering: build plan -> model.sql + schema.yml + unit test."""
+"""Deterministic rendering: build plan -> model.sql + schema.yml + unit_test.yml."""
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +12,8 @@ def _load_template(name: str) -> jinja2.Template:
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
         undefined=jinja2.StrictUndefined,
+        keep_trailing_newline=True,
+        extensions=["jinja2.ext.do"],
     )
     return env.get_template(name)
 
@@ -33,16 +34,16 @@ def render_model(plan: dict[str, Any], output_dir: Path) -> dict[str, Path]:
 
     model_sql = _load_template("model.sql.jinja").render(plan=plan)
     schema_yml = _load_template("schema.yml.jinja").render(plan=plan)
-    unit_test_sql = _load_template("unit_test.jinja").render(plan=plan)
+    unit_test_yml = _load_template("unit_test.jinja").render(plan=plan)
 
     paths = {
         "model": output_dir / f"{model_name}.sql",
         "schema": output_dir / f"{model_name}.yml",
-        "unit_test": output_dir / f"{model_name}_unit_test.sql",
+        "unit_test": output_dir / f"{model_name}_unit_test.yml",
     }
 
     paths["model"].write_text(model_sql, encoding="utf-8")
     paths["schema"].write_text(schema_yml, encoding="utf-8")
-    paths["unit_test"].write_text(unit_test_sql, encoding="utf-8")
+    paths["unit_test"].write_text(unit_test_yml, encoding="utf-8")
 
     return paths

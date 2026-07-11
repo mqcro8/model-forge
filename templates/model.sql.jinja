@@ -1,42 +1,83 @@
+{# model.sql.jinja — renders a dbt model SQL file from a build plan #}
+{# Output literal {{ ref('...') }} using raw/endraw blocks #}
+{%- set ns = namespace(seen_cols={}) %}
+{%- for ref in plan.source_refs %}
+{%- if loop.first %}
 with
-{% for ref in plan.source_refs %}
+{%- endif %}
+
 {{ ref.alias }} as (
     select
-        {% for dim in plan.dimensions if dim.source_table == ref.table_name %}
-        {{ dim.source_column }} as {{ dim.name }},
-        {% endfor %}
-        {% for measure in plan.measures if measure.source_table == ref.table_name %}
-        {{ measure.source_column }} as {{ measure.name }}{% if not loop.last or loop.index < plan.measures|length %},{% endif %}
-        {% endfor %}
-    from {{ "{{ ref('" ~ ref.table_name ~ "') }}" }}
-    {% for filter in plan.filters if filter.source_table == ref.table_name %}
-    {% if filter.operator == "is_null" %}
-    where {{ filter.source_column }} is null
-    {% elif filter.operator == "not_null" %}
-    where {{ filter.source_column }} is not null
-    {% elif filter.operator == "in" %}
-    where {{ filter.source_column }} in ({{ filter.value }})
-    {% else %}
-    where {{ filter.source_column }} {{ filter.operator }} {{ filter.value }}
-    {% endif %}
-    {% endfor %}
-)
-{% endfor %}
+{%- set dims = plan.dimensions | selectattr("source_table", "equalto", ref.table_name) | list %}
+{%- set meas = plan.measures | selectattr("source_table", "equalto", ref.table_name) | list %}
+{# Collect join keys for this CTE #}
+{%- set join_keys = [] %}
+{%- for join in plan.join_graph %}
+{%- if join.left_table == ref.alias %}
+{%- if join.left_column not in join_keys %}
+{%- do join_keys.append(join.left_column) %}
+{%- endif %}
+{%- endif %}
+{%- if join.right_table == ref.alias %}
+{%- if join.right_column not in join_keys %}
+{%- do join_keys.append(join.right_column) %}
+{%- endif %}
+{%- endif %}
+{%- endfor %}
+{# Filter join keys to only those NOT already covered by dimensions #}
+{%- set dim_cols = dims | map(attribute="source_column") | list %}
+{%- set extra_keys = join_keys | reject("in", dim_cols) | list %}
+{%- for dim in dims %}
+        {{ dim.source_column }} as {{ dim.name }}{%- if not loop.last or meas or extra_keys %},{% endif %}
+
+{%- endfor %}
+{%- for measure in meas %}
+        {{ measure.source_column }} as {{ measure.name }}{%- if not loop.last or extra_keys %},{% endif %}
+
+{%- endfor %}
+{%- for jk in extra_keys %}
+        {{ jk }}{%- if not loop.last %},{% endif %}
+
+{%- endfor %}
+    from {% raw %}{{ ref('{% endraw %}{{ ref.table_name }}{% raw %}') }}{% endraw %}
+{%- for filter in plan.filters if filter.source_table == ref.table_name %}
+{% if loop.first %}    where {% else %}  and {% endif -%}
+{%- if filter.operator == "is_null" %}
+        {{ filter.source_column }} is null
+{%- elif filter.operator == "not_null" %}
+        {{ filter.source_column }} is not null
+{%- elif filter.operator == "in" %}
+        {{ filter.source_column }} in ({{ filter.value }})
+{%- else %}
+        {{ filter.source_column }} {{ filter.operator }} {{ filter.value }}
+{%- endif %}
+{%- endfor %}
+){% if not loop.last %},{% endif %}
+
+{%- endfor %}
+
 select
-    {% for dim in plan.dimensions %}
-    {{ dim.source_table }}.{{ dim.name }} as {{ dim.name }},
-    {% endfor %}
-    {% for measure in plan.measures %}
-    {{ measure.aggregation }}({{ measure.source_table }}.{{ measure.name }}) as {{ measure.name }}{% if not loop.last %},{% endif %}
-    {% endfor %}
-from {% for ref in plan.source_refs %}{{ ref.alias }}{% if not loop.last %}, {% endif %}{% endfor %}
-{% for join in plan.join_graph %}
-{{ join.join_type }} join {{ join.right_table }} on {{ join.left_table }}.{{ join.left_column }} = {{ join.right_table }}.{{ join.right_column }}
-{% endfor %}
-{% for group_by in plan.dimensions %}
-{% if loop.first %}
-group by {{ group_by.name }}
-{% else %}
-    , {{ group_by.name }}
-{% endif %}
-{% endfor %}
+{# Build a lookup: source_table -> alias from source_refs #}
+{%- set ns2 = namespace(alias_map={}) %}
+{%- for ref in plan.source_refs %}
+{%- set ns2.alias_map = ns2.alias_map.update({ref.table_name: ref.alias}) or ns2.alias_map %}
+{%- endfor %}
+{%- for dim in plan.dimensions %}
+        {{ ns2.alias_map[dim.source_table] }}.{{ dim.name }} as {{ dim.name }}{%- if not loop.last or plan.measures %},{% endif %}
+
+{%- endfor %}
+{%- for measure in plan.measures %}
+        {{ measure.aggregation }}({{ ns2.alias_map[measure.source_table] }}.{{ measure.name }}) as {{ measure.name }}{%- if not loop.last %},{% endif %}
+
+{%- endfor %}
+    from {{ plan.source_refs[0].alias }}
+{%- for join in plan.join_graph %}
+    {{ join.join_type }} join {{ join.right_table }} on {{ join.left_table }}.{{ join.left_column }} = {{ join.right_table }}.{{ join.right_column }}
+{%- endfor %}
+{%- if plan.dimensions %}
+    group by
+{%- for dim in plan.dimensions %}
+        {{ loop.index }}{%- if not loop.last %},{% endif %}
+
+{%- endfor %}
+{%- endif %}

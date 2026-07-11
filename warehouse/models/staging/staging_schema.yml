@@ -1,0 +1,89 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: Staged customer data from raw seed
+    columns:
+      - name: customer_id
+        description: Unique identifier for each customer
+        data_tests:
+          - unique
+          - not_null
+      - name: first_name
+        description: Customer first name
+        data_tests:
+          - not_null
+      - name: last_name
+        description: Customer last name
+        data_tests:
+          - not_null
+      - name: email
+        description: Customer email address
+        data_tests:
+          - unique
+          - not_null
+      - name: country
+        description: Customer country code
+        data_tests:
+          - not_null
+      - name: signup_date
+        description: Date customer signed up
+        data_tests:
+          - not_null
+      - name: is_active
+        description: Whether customer account is active
+        data_tests:
+          - not_null
+
+  - name: stg_orders
+    description: Staged order data from raw seed
+    columns:
+      - name: order_id
+        description: Unique identifier for each order
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Foreign key to customers
+        data_tests:
+          - not_null
+      - name: order_date
+        description: Date order was placed
+        data_tests:
+          - not_null
+      - name: order_status
+        description: Current status of the order
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['completed', 'pending', 'cancelled']
+      - name: total_amount
+        description: Total order amount
+        data_tests:
+          - not_null
+
+  - name: stg_order_items
+    description: Staged order item data from raw seed
+    columns:
+      - name: order_item_id
+        description: Unique identifier for each order item
+        data_tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: Foreign key to orders
+        data_tests:
+          - not_null
+      - name: product_name
+        description: Name of the product
+        data_tests:
+          - not_null
+      - name: quantity
+        description: Quantity ordered
+        data_tests:
+          - not_null
+      - name: unit_price
+        description: Price per unit
+        data_tests:
+          - not_null
