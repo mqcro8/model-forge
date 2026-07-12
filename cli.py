@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from agent.generator import generate_build_plan, GenerationError
-from agent.mcp_client import MCPClient
+from agent.mcp_client import MCPClient, MCPError
 from agent.render import render_model
 from agent.pr import open_pr
 from agent.writeback import annotate_source_tables
@@ -57,6 +57,9 @@ def _run_generate(args: argparse.Namespace) -> None:
         plan = generate_build_plan(args.prompt, mcp)
     except GenerationError as exc:
         print(f"Generation failed: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except MCPError as exc:
+        print(f"MCP error: {exc}", file=sys.stderr)
         sys.exit(1)
     except RuntimeError as exc:
         print(f"MCP error: {exc}", file=sys.stderr)

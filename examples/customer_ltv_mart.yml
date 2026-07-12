@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: customer_ltv_mart
+    description: "Customer lifetime value mart aggregating total spend and order counts per customer"
+    columns:
+      - name: customer_id
+        description: "Unique customer identifier"
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: "Customer first name"
+        data_tests:
+          - not_null
+      - name: country
+        description: "Customer country"
+      - name: total_spend
+        description: "Total amount spent across all orders"
+        data_tests:
+          - not_null
+      - name: order_count
+        description: "Total number of orders placed"
+        data_tests:
+          - not_null

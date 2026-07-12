@@ -1,2 +1,0 @@
--- Example output (illustrative — actual output depends on DataHub metadata)
--- See examples/generated_schema.yml for the matching schema file.
