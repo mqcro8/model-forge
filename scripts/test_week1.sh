@@ -68,20 +68,19 @@ echo ""
 echo "==> Testing MCP client..."
 python -c "
 from agent.mcp_client import MCPClient
-import json
 
 client = MCPClient()
 print('Starting MCP server...')
-init_result = client.start()
-print(f'Initialization: {json.dumps(init_result, indent=2)}')
+client.start()
+print('Initialization: OK')
 
 print('Listing tools...')
 tools = client.list_tools()
 print(f'Available tools: {[t[\"name\"] for t in tools]}')
 
 print('Searching for customers...')
-result = client.call_tool('search_datasets', {'query': 'customers'})
-print(f'Search result: {json.dumps(result, indent=2)[:500]}...')
+result = client.run_tool('search', {'query': 'customers'})
+print(f'Search result: {result[:500]}...')
 
 client.stop()
 print('✅ MCP client works!')

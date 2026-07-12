@@ -1,5 +1,4 @@
 """Test template rendering with a mock build plan."""
-import json
 from pathlib import Path
 from agent.render import render_model
 

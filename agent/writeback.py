@@ -3,7 +3,7 @@
 from typing import Any
 
 from datahub.emitter.mcp import MetadataChangeProposalWrapper
-from datahub.emitter.mce_builder import make_dataset_urn, make_lineage_mce, get_sys_time
+from datahub.emitter.mce_builder import make_lineage_mce, get_sys_time
 from datahub.emitter.rest_emitter import DatahubRestEmitter
 from datahub.metadata.com.linkedin.pegasus2avro.dataset import DatasetProperties
 from datahub.metadata._internal_schema_classes import SystemMetadataClass

@@ -103,11 +103,13 @@ model-forge/
 ├── examples/                   # judges can look here without running anything
 │   ├── prompt.txt
 │   ├── generated_model.sql
-│   ├── generated_schema.yml
-│   └── writeback_screenshot.png
+│   └── generated_schema.yml
 ├── scripts/
 │   ├── setup_datahub.sh
-│   └── run_demo.sh
+│   ├── run_demo.sh
+│   ├── test_render.py
+│   ├── test_mcp.py
+│   └── test_week1.sh
 └── cli.py                      # entry point: `python cli.py generate "<ask>"`
 ```
 
@@ -131,7 +133,7 @@ model-forge/
 4. **Connect the MCP server.**
    `uvx mcp-server-datahub@latest` against the local GMS URL.
    `mcp_client.py` is a thin wrapper that launches this over stdio and
-   exposes `call_tool()`. The server's read-only discovery tools (search,
+   exposes `run_tool()`. The server's read-only discovery tools (search,
    pull full metadata, drill into schemas, trace lineage) are always on;
    its mutation tools (tags, glossary terms, ownership) only activate once
    `TOOLS_IS_MUTATION_ENABLED=true` is set — keep that off for the read
@@ -178,14 +180,14 @@ while building the generator itself.
 
 ## 6. Timeline
 
-Today: July 10, 2026. Submissions close August 10, 2026, 5:00pm ET — about
+Today: July 11, 2026. Submissions close August 10, 2026, 5:00pm ET — about
 4 weeks.
 
 | Week | Dates | Milestone | Status |
 |---|---|---|---|
 | 1 | Jul 9–15 | DataHub up, seed warehouse ingested, MCP server talking to it. Confirm `search` / `list_schema_fields` / `get_lineage` all return real data. | ✅ DONE |
 | 2 | Jul 16–22 | Build the generator loop + templates. Milestone: one prompt → one `dbt build`-passing model, end to end. | ✅ DONE |
-| 3 | Jul 23–29 | Write-back, PR automation, CI workflow, `examples/` folder, harden fail-fast paths. | 🔄 IN PROGRESS (3.1, 3.2 done; 3.3, 3.4, 3.5 pending) |
+| 3 | Jul 23–29 | Write-back, PR automation, CI workflow, `examples/` folder, harden fail-fast paths. | 🔄 IN PROGRESS (3.1, 3.2, 3.4 done; 3.3, 3.5 pending) |
 | 4 | Jul 30–Aug 5 | README, demo video (≤3 min, must show it actually running), optional OSS bonus contribution, clean-clone test run. | ⬜ PENDING |
 | — | Aug 6–10 | Buffer, submit. | ⬜ PENDING |
 
@@ -225,9 +227,11 @@ a docs fix showing this code-gen pattern) counts toward the bonus.
 
 ## 9. Open questions / next steps
 
-- [ ] Scaffold the repo (seed dbt project, MCP client, Jinja templates)
-- [ ] Write the `dbt` ingestion recipe and confirm DataHub is reading the
+- [x] Scaffold the repo (seed dbt project, MCP client, Jinja templates)
+- [x] Write the `dbt` ingestion recipe and confirm DataHub is reading the
       real seed-project schema before any agent code exists
-- [ ] Decide: Anthropic API key vs. Claude Code headless mode for the
-      generation agent's execution engine
-- [ ] Pick the exact LTV definition/aggregation logic for the demo model
+- [x] Decide: Anthropic API key vs. Claude Code headless mode for the
+      generation agent's execution engine — using Anthropic API (Haiku 4.5)
+- [x] Pick the exact LTV definition/aggregation logic for the demo model
+- [ ] Fail-fast hardening (3.3) — timeouts, stderr collection, error paths
+- [ ] Examples folder — replace placeholders with real generated output

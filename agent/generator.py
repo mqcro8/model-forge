@@ -52,7 +52,7 @@ def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
     max_iterations = 15
     for _ in range(max_iterations):
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-haiku-4-5-20251001",
             max_tokens=4096,
             system=system,
             messages=messages,

@@ -23,8 +23,8 @@ def _headers(token: str) -> dict[str, str]:
     }
 
 
-def _get_default_branch_sha(repo: str, headers: dict[str, str]) -> tuple[str, str]:
-    """Return (sha, branch_name) for the default branch."""
+def _get_default_branch(repo: str, headers: dict[str, str]) -> str:
+    """Return the default branch name for the repo."""
     url = f"https://api.github.com/repos/{repo}"
     resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
@@ -122,7 +122,7 @@ def open_pr(
     token = _check_env("GITHUB_TOKEN")
     headers = _headers(token)
     branch = f"model-forge/{model_name}"
-    base_branch = _get_default_branch_sha(repo, headers)
+    base_branch = _get_default_branch(repo, headers)
 
     # Create the feature branch
     _create_branch(repo, base_branch, branch, headers)

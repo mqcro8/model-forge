@@ -2,11 +2,11 @@ version: 2
 
 models:
   - name: {{ plan.model_name }}
-    description: "{{ plan.description }}"
+    description: "{{ plan.description | replace('"', '\\"') }}"
     columns:
 {%- for dim in plan.dimensions %}
       - name: {{ dim.name }}
-        description: "{{ dim.description }}"
+        description: "{{ dim.description | replace('"', '\\"') }}"
 {%- set col_tests = [] %}
 {%- if dim.name in plan.tests.unique_columns %}
 {%-   set _ = col_tests.append("unique") %}
@@ -14,6 +14,12 @@ models:
 {%- if dim.name in plan.tests.not_null_columns %}
 {%-   set _ = col_tests.append("not_null") %}
 {%- endif %}
+{%- for av in plan.tests.accepted_values if av.column == dim.name %}
+{%-   set _ = col_tests.append("accepted_values") %}
+{%- endfor %}
+{%- for rel in plan.tests.relationships if rel.from_column == dim.name %}
+{%-   set _ = col_tests.append("relationships") %}
+{%- endfor %}
 {%- if col_tests %}
         data_tests:
 {%- for test in col_tests %}
@@ -23,7 +29,7 @@ models:
 {%- endfor %}
 {%- for measure in plan.measures %}
       - name: {{ measure.name }}
-        description: "{{ measure.description }}"
+        description: "{{ measure.description | replace('"', '\\"') }}"
 {%- set col_tests = [] %}
 {%- if measure.name in plan.tests.unique_columns %}
 {%-   set _ = col_tests.append("unique") %}
@@ -31,6 +37,12 @@ models:
 {%- if measure.name in plan.tests.not_null_columns %}
 {%-   set _ = col_tests.append("not_null") %}
 {%- endif %}
+{%- for av in plan.tests.accepted_values if av.column == measure.name %}
+{%-   set _ = col_tests.append("accepted_values") %}
+{%- endfor %}
+{%- for rel in plan.tests.relationships if rel.from_column == measure.name %}
+{%-   set _ = col_tests.append("relationships") %}
+{%- endfor %}
 {%- if col_tests %}
         data_tests:
 {%- for test in col_tests %}
@@ -38,20 +50,3 @@ models:
 {%- endfor %}
 {%- endif %}
 {%- endfor %}
-{%- if plan.tests.accepted_values or plan.tests.relationships %}
-    data_tests:
-{%- for av in plan.tests.accepted_values %}
-      - accepted_values:
-          column_name: {{ av.column }}
-          values:
-{%- for v in av.values %}
-            - '{{ v }}'
-{%- endfor %}
-{%- endfor %}
-{%- for rel in plan.tests.relationships %}
-      - relationships:
-          column_name: {{ rel.from_column }}
-          to: ref('{{ rel.to_table }}')
-          field: {{ rel.to_column }}
-{%- endfor %}
-{%- endif %}

@@ -16,6 +16,7 @@ An agent that generates dbt models grounded in real DataHub metadata.
 - dbt-core + dbt-duckdb
 - Anthropic API key (`ANTHROPIC_API_KEY`)
 - GitHub token with repo scope (`GITHUB_TOKEN`)
+- GitHub repo identifier (`GITHUB_REPO`, e.g. `owner/repo` — only needed for PR creation)
 
 ## Project structure
 

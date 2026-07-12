@@ -90,8 +90,9 @@ def _run_dbt_build(model_name: str, output_dir: Path) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # Copy the three generated files
+    expected_suffixes = {".sql", ".yml"}
     for src in output_dir.iterdir():
-        if src.is_file():
+        if src.is_file() and src.suffix in expected_suffixes:
             dest = target_dir / src.name
             dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
             print(f"  Copied {src.name} -> {dest}", file=sys.stderr)
@@ -130,7 +131,8 @@ def _run_pr(plan: dict[str, Any], paths: dict[str, Path]) -> None:
 
 def _run_writeback(plan: dict[str, Any]) -> None:
     """Write metadata annotations back to DataHub."""
-    gms_server = "http://localhost:8080"
+    import os
+    gms_server = os.environ.get("DATAHUB_GMS_URL", "http://localhost:8080")
 
     # Build source URNs from the plan
     source_urns = []

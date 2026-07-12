@@ -1,6 +1,5 @@
 {# model.sql.jinja — renders a dbt model SQL file from a build plan #}
 {# Output literal {{ ref('...') }} using raw/endraw blocks #}
-{%- set ns = namespace(seen_cols={}) %}
 {%- for ref in plan.source_refs %}
 {%- if loop.first %}
 with
