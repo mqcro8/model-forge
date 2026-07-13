@@ -76,6 +76,8 @@ def _upsert_file(
     }
     if get_resp.status_code == 200:
         payload["sha"] = get_resp.json()["sha"]
+    elif get_resp.status_code != 404:
+        get_resp.raise_for_status()
 
     resp = requests.put(url, headers=headers, json=payload, timeout=30)
     resp.raise_for_status()

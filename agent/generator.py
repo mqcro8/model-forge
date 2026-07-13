@@ -37,10 +37,18 @@ def _call_mcp_tool(mcp_client: MCPClient, tool_name: str, arguments: dict[str, A
     return result
 
 
+_REQUIRED_PLAN_KEYS = [
+    "model_name", "description", "source_refs",
+    "dimensions", "measures", "unit_test",
+]
+
+
 def _validate_plan(plan: dict[str, Any]) -> None:
-    """Validate the plan has required top-level keys."""
-    required = ["model_name", "description", "source_refs", "dimensions", "measures"]
-    missing = [k for k in required if k not in plan]
+    """Validate the plan has all required keys and non-empty essentials.
+
+    Raises GenerationError with a clear message on any failure — no silent fallback.
+    """
+    missing = [k for k in _REQUIRED_PLAN_KEYS if k not in plan]
     if missing:
         raise GenerationError(f"Generated plan is missing required keys: {missing}")
 
@@ -48,6 +56,18 @@ def _validate_plan(plan: dict[str, Any]) -> None:
         raise GenerationError("Plan has no source_refs — the LLM found no tables in DataHub")
     if not plan["dimensions"] and not plan["measures"]:
         raise GenerationError("Plan has no dimensions or measures — nothing to build")
+
+    # Ensure optional keys default to sensible values so templates don't UndefinedError
+    for key in ("filters", "join_graph"):
+        if plan.get(key) is None:
+            plan[key] = []
+    if plan.get("tests") is None:
+        plan["tests"] = {
+            "unique_columns": [],
+            "not_null_columns": [],
+            "accepted_values": [],
+            "relationships": [],
+        }
 
 
 def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
@@ -78,6 +98,7 @@ def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
     system = SYSTEM_PROMPT + "\n\nBuildPlan JSON schema:\n" + BUILD_PLAN_SCHEMA
 
     max_iterations = 15
+    total_tool_calls = 0
     for iteration in range(max_iterations):
         try:
             response = client.messages.create(
@@ -128,8 +149,8 @@ def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
 
             _validate_plan(plan)
             print(
-                f"Generation complete: {len(tool_calls + [None])} tool calls "
-                f"(iteration {iteration + 1}/{max_iterations})",
+                f"Generation complete: {total_tool_calls} tool calls "
+                f"across {iteration + 1} iterations",
                 file=sys.stderr,
             )
             return plan
@@ -150,6 +171,7 @@ def generate_build_plan(ask: str, mcp_client: MCPClient) -> dict[str, Any]:
             )
 
         messages.append({"role": "user", "content": tool_results})
+        total_tool_calls += len(tool_calls)
 
     raise GenerationError(
         f"Generation loop exceeded {max_iterations} iterations without producing a plan"

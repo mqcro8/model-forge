@@ -61,8 +61,8 @@ def _run_generate(args: argparse.Namespace) -> None:
     except MCPError as exc:
         print(f"MCP error: {exc}", file=sys.stderr)
         sys.exit(1)
-    except RuntimeError as exc:
-        print(f"MCP error: {exc}", file=sys.stderr)
+    except Exception as exc:
+        print(f"Unexpected error during generation: {exc}", file=sys.stderr)
         sys.exit(1)
     finally:
         mcp.stop()
@@ -92,10 +92,9 @@ def _run_dbt_build(model_name: str, output_dir: Path) -> None:
     target_dir = warehouse_models / "generated"
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy the three generated files
-    expected_suffixes = {".sql", ".yml"}
-    for src in output_dir.iterdir():
-        if src.is_file() and src.suffix in expected_suffixes:
+    # Copy only the three generated files (not stale files from prior runs)
+    for key, src in paths.items():
+        if src.is_file():
             dest = target_dir / src.name
             dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
             print(f"  Copied {src.name} -> {dest}", file=sys.stderr)
@@ -129,7 +128,9 @@ def _run_pr(plan: dict[str, Any], paths: dict[str, Path]) -> None:
     except EnvironmentError as exc:
         print(f"PR creation skipped: {exc}", file=sys.stderr)
     except Exception as exc:
+        import traceback
         print(f"PR creation failed: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
 
 
 def _run_writeback(plan: dict[str, Any]) -> None:
@@ -160,7 +161,9 @@ def _run_writeback(plan: dict[str, Any]) -> None:
         )
         print("DataHub write-back complete", file=sys.stderr)
     except Exception as exc:
+        import traceback
         print(f"Write-back failed: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
 
 
 if __name__ == "__main__":

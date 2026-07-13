@@ -34,6 +34,9 @@ def test_validate_plan_ok():
         "source_refs": [{"table_name": "t", "alias": "a", "columns_used": [], "join_key": None}],
         "dimensions": [{"name": "id", "source_table": "t", "source_column": "id", "data_type": "INT", "description": "id"}],
         "measures": [],
+        "join_graph": [],
+        "tests": [],
+        "unit_test": {"input_rows": {}, "expect_rows": []},
     }
     _validate_plan(plan)
     print("  validate_plan (valid): OK")
@@ -48,12 +51,54 @@ def test_validate_plan_missing_keys():
     print("  validate_plan (missing keys): OK")
 
 
+def test_validate_plan_missing_new_keys():
+    """Missing unit_test should raise; join_graph/tests default to empty."""
+    base = {
+        "model_name": "x", "description": "x",
+        "source_refs": [{"table_name": "t", "alias": "a", "columns_used": [], "join_key": None}],
+        "dimensions": [{"name": "a", "source_table": "t", "source_column": "a", "data_type": "INT", "description": "a"}],
+        "measures": [],
+    }
+    # unit_test is required
+    try:
+        _validate_plan(dict(base))
+        assert False, "Should have raised for missing unit_test"
+    except GenerationError as e:
+        assert "missing required keys" in str(e) and "unit_test" in str(e)
+
+    # join_graph and tests should default, not raise
+    plan = {**base, "unit_test": {"input_rows": {}, "expect_rows": []}}
+    _validate_plan(plan)
+    assert plan["join_graph"] == []
+    assert plan["tests"]["unique_columns"] == []
+    print("  validate_plan (missing unit_test raises, others default): OK")
+
+
+def test_validate_plan_missing_optional_keys():
+    """Plan with required keys but missing optional keys should auto-default them."""
+    plan = {
+        "model_name": "test_mart",
+        "description": "test",
+        "source_refs": [{"table_name": "t", "alias": "a", "columns_used": [], "join_key": None}],
+        "dimensions": [{"name": "id", "source_table": "t", "source_column": "id", "data_type": "INT", "description": "id"}],
+        "measures": [],
+        "unit_test": {"input_rows": {}, "expect_rows": []},
+    }
+    _validate_plan(plan)
+    # Optional keys should be defaulted
+    assert plan["join_graph"] == []
+    assert plan["filters"] == []
+    assert plan["tests"] == {"unique_columns": [], "not_null_columns": [], "accepted_values": [], "relationships": []}
+    print("  validate_plan (missing optional keys defaulted): OK")
+
+
 def test_validate_plan_no_sources():
     try:
         _validate_plan({
             "model_name": "x", "description": "x", "source_refs": [],
             "dimensions": [{"name": "a", "source_table": "t", "source_column": "a", "data_type": "INT", "description": "a"}],
             "measures": [],
+            "join_graph": [], "tests": [], "unit_test": {"input_rows": {}, "expect_rows": []},
         })
         assert False, "Should have raised"
     except GenerationError as e:
@@ -67,6 +112,7 @@ def test_validate_plan_empty():
             "model_name": "x", "description": "x",
             "source_refs": [{"table_name": "t", "alias": "a", "columns_used": [], "join_key": None}],
             "dimensions": [], "measures": [],
+            "join_graph": [], "tests": [], "unit_test": {"input_rows": {}, "expect_rows": []},
         })
         assert False, "Should have raised"
     except GenerationError as e:
@@ -80,6 +126,8 @@ if __name__ == "__main__":
     test_mcp_error()
     test_validate_plan_ok()
     test_validate_plan_missing_keys()
+    test_validate_plan_missing_new_keys()
+    test_validate_plan_missing_optional_keys()
     test_validate_plan_no_sources()
     test_validate_plan_empty()
     print("\nAll tests passed.")

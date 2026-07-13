@@ -27,30 +27,31 @@ def annotate_source_tables(
     """
     emitter = DatahubRestEmitter(gms_server=gms_server)
 
-    for urn in source_urns:
-        # Emit a DatasetProperties MCP to add description
-        props = DatasetProperties(
-            description=f"Source for generated model: {model_name} — {model_description}",
-        )
-        mcp = MetadataChangeProposalWrapper(
-            entityType="DATASET",
-            changeType="UPSERT",
-            entityUrn=urn,
-            aspectName="datasetProperties",
-            aspect=props,
-            systemMetadata=SystemMetadataClass(lastObserved=get_sys_time(), runId="model-forge-writeback"),
-        )
-        emitter.emit_mcp(mcp)
-        print(f"  Annotated {urn} with model reference", flush=True)
+    try:
+        for urn in source_urns:
+            # Emit a DatasetProperties MCP to add description
+            props = DatasetProperties(
+                description=f"Source for generated model: {model_name} — {model_description}",
+            )
+            mcp = MetadataChangeProposalWrapper(
+                entityType="DATASET",
+                changeType="UPSERT",
+                entityUrn=urn,
+                aspectName="datasetProperties",
+                aspect=props,
+                systemMetadata=SystemMetadataClass(lastObserved=get_sys_time(), runId="model-forge-writeback"),
+            )
+            emitter.emit_mcp(mcp)
+            print(f"  Annotated {urn} with model reference", flush=True)
 
-    # Add lineage if target URN provided
-    if target_urn and source_urns:
-        lineage_mce = make_lineage_mce(
-            upstream_urns=source_urns,
-            downstream_urn=target_urn,
-            lineage_type="TRANSFORMED",
-        )
-        emitter.emit_mce(lineage_mce)
-        print(f"  Added lineage: {len(source_urns)} sources -> {target_urn}", flush=True)
-
-    emitter.close()
+        # Add lineage if target URN provided
+        if target_urn and source_urns:
+            lineage_mce = make_lineage_mce(
+                upstream_urns=source_urns,
+                downstream_urn=target_urn,
+                lineage_type="TRANSFORMED",
+            )
+            emitter.emit_mce(lineage_mce)
+            print(f"  Added lineage: {len(source_urns)} sources -> {target_urn}", flush=True)
+    finally:
+        emitter.close()

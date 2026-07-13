@@ -7,15 +7,16 @@ import jinja2
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
 
+_JINJA_ENV = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
+    undefined=jinja2.StrictUndefined,
+    keep_trailing_newline=True,
+    extensions=["jinja2.ext.do"],
+)
+
 
 def _load_template(name: str) -> jinja2.Template:
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(TEMPLATE_DIR)),
-        undefined=jinja2.StrictUndefined,
-        keep_trailing_newline=True,
-        extensions=["jinja2.ext.do"],
-    )
-    return env.get_template(name)
+    return _JINJA_ENV.get_template(name)
 
 
 def render_model(plan: dict[str, Any], output_dir: Path) -> dict[str, Path]:

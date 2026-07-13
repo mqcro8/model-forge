@@ -75,8 +75,14 @@ class MCPClient:
         )
         self._context_stack = stdio_client(params)
         self._read, self._write = await self._context_stack.__aenter__()
-        self._session = ClientSession(self._read, self._write)
-        await self._session.__aenter__()
+        try:
+            self._session = ClientSession(self._read, self._write)
+            await self._session.__aenter__()
+        except Exception:
+            # If session init fails, clean up the transport we just opened
+            await self._context_stack.__aexit__(None, None, None)
+            self._context_stack = None
+            raise
         self._log_stderr("MCP server initialized")
         await self._session.initialize()
 
@@ -91,7 +97,8 @@ class MCPClient:
             raise MCPError(f"list_tools timed out after {self._timeout}s") from None
 
     async def _async_list_tools(self) -> list[dict[str, Any]]:
-        assert self._session is not None
+        if self._session is None:
+            raise MCPError("MCP session not started — call start() first")
         result = await self._session.list_tools()
         tools = [
             {
@@ -118,7 +125,8 @@ class MCPClient:
             ) from None
 
     async def _async_call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> str:
-        assert self._session is not None
+        if self._session is None:
+            raise MCPError("MCP session not started — call start() first")
         result = await self._session.call_tool(name, arguments or {})
         parts = []
         for content in result.content:
@@ -141,12 +149,12 @@ class MCPClient:
         if self._session:
             try:
                 await self._session.__aexit__(None, None, None)
-            except Exception:
-                pass
+            except Exception as exc:
+                self._log_stderr(f"Warning: MCP session teardown error: {exc}")
             self._session = None
         if self._context_stack:
             try:
                 await self._context_stack.__aexit__(None, None, None)
-            except Exception:
-                pass
+            except Exception as exc:
+                self._log_stderr(f"Warning: MCP transport teardown error: {exc}")
             self._context_stack = None
